@@ -1,0 +1,22 @@
+stage('Make a new Launch Configuration'){
+      steps{
+        withAWS(region: 'eu-west-1', credentials: 'JenkinsSlaveCred'){
+
+          sh "aws autoscaling describe-launch-configurations --launch-configuration-names ${env.CURRENT_LAUNCHCONF} --query \"LaunchConfigurations[0]\" > CurrentLC.json"
+          sh "cat CurrentLC.json"
+          script{
+            jsonfile = readJSON file: 'CurrentLC.json'
+            jsonfile.ImageId  = env.NEW_AMI
+            jsonfile.LaunchConfigurationName = "jenkinsgeneratedLC" + BUILD_ID
+            jsonfile.remove('LaunchConfigurationARN')
+            jsonfile.remove('CreatedTime')
+            jsonfile.remove('KernelId')
+            jsonfile.remove('RamdiskId')
+            writeJSON file: 'LaunchConfig2.json', json: jsonfile, pretty: 4
+          }
+          sh "cat LaunchConfig2.json"
+          sh "aws autoscaling create-launch-configuration --cli-input-json file://LaunchConfig2.json"
+          sh "aws autoscaling describe-launch-configurations --launch-configuration-names jenkinsgeneratedLC${BUILD_ID}"
+        }
+      }
+    }//end stage ('Make a new Launch Configuration')
